@@ -1,9 +1,3 @@
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:4046355364.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2361083615.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:595309245.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3329504100.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3204777713.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2724988342.
 import dotenv from 'dotenv';
 import express from 'express';
 import { MongoClient } from 'mongodb';
@@ -45,6 +39,80 @@ app.post('/signup', async (req, res) => {
     res.status(500).send('Error creating user');
   }
 });
+
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).send('Email and password are required');
+    }
+
+    const db = client.db('proffesinal_coach2');
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ email, password });
+
+    if (!user) {
+      return res.status(401).send('Invalid email or password');
+    }
+
+    res.status(200).json({ message: 'Login successful', userId: user._id });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).send('Error during login');
+  }
+});
+
+
+//chat routes
+app.post('/chat', async (req, res) => {
+  try {
+    const { chatSessionId, chatName, role, content } = req.body;
+    if (!chatSessionId || !role || !content) {
+      return res.status(400).send('chatSessionId, role, and content are required');
+    }
+    const db = client.db('proffesinal_coach2');
+    const chatCollection = db.collection('chat');
+    const result = await chatCollection.insertOne({ chatSessionId, chatName, role, content });
+    res.status(201).json({ message: 'Message stored successfully', messageId: result.insertedId });
+  } catch (error) {
+    console.error('Error storing message:', error);
+    res.status(500).send('Error storing message');
+  }
+});
+
+app.get('/chat/:chatSessionId', async (req, res) => {
+  try {
+    const chatSessionId = req.params.chatSessionId;
+    const db = client.db('proffesinal_coach2');
+    const chatCollection = db.collection('chat');
+    const chatMessages = await chatCollection.find({ chatSessionId }).toArray();
+    res.status(200).json(chatMessages);
+  } catch (error) {
+    console.error('Error retrieving chat messages:', error);
+    res.status(500).send('Error retrieving chat messages');
+  }
+});
+
+
+app.delete('/chat/:chatSessionId', async (req, res) => {
+  try {
+    const chatSessionId = req.params.chatSessionId;
+    const db = client.db('proffesinal_coach2');
+    const chatCollection = db.collection('chat');
+    const deleteResult = await chatCollection.deleteMany({ chatSessionId });
+
+    if (deleteResult.deletedCount > 0) {
+      res.status(200).json({ message: 'All messages with chatSessionId deleted successfully' });
+    } else {
+      res.status(404).json({ message: 'No messages found with the given chatSessionId' });
+    }
+  } catch (error) {
+    console.error('Error deleting chat messages:', error);
+    res.status(500).send('Error deleting chat messages');
+  }
+});
+
 
 app.get('/', (req, res) => {
   const name = process.env.NAME || 'World';
